@@ -4,6 +4,7 @@ from PIL import Image
 import numpy as np
 import pandas as pd
 from torch.utils.data import Dataset
+import os
 
 class MammographyDataset(Dataset):
     def __init__(self, metadata_path, split, task, config):
@@ -72,46 +73,56 @@ def print_class_distribution(dataset, task):
     return class_names
 
 
-import pandas as pd
-import os
-
-def upgrade_df_with_image_size_and_save(csv_link, path_column='path2', size_column='size', size_threshold=10):
+def upgrade_df_with_image_size_and_save(metadata_path, path_column='path2', size_threshold=20):
     """
-    Updates the DataFrame by adding a column with image sizes (in KB), filters out rows with images below a size threshold,
-    and saves the updated DataFrame back to the same CSV file.
-
-    Parameters:
-    - csv_link (str): Path to the CSV file containing the DataFrame.
-    - path_column (str): The name of the column containing the image paths.
-    - size_column (str): The name of the new column to store image sizes in KB.
-    - size_threshold (int): The minimum file size (in KB) to retain an image.
-
-    Returns:
-    - None
+    Add image size columns to dataframe without modifying original files
+    
+    Args:
+        metadata_path (str): Path to metadata CSV
+        path_column (str): Column name containing image paths
+        size_threshold (int): Minimum size in KB to keep image
     """
-    def get_image_size(image_path):
+    # Read existing dataframe
+    df = pd.read_csv(metadata_path)
+    
+    # Add size columns if they don't exist
+    if 'width' not in df.columns:
+        df['width'] = None
+    if 'height' not in df.columns:
+        df['height'] = None
+    if 'file_size_kb' not in df.columns:
+        df['file_size_kb'] = None
+        
+    # Update size information
+    for idx, row in df.iterrows():
         try:
-            if os.path.exists(image_path):
-                size_bytes = os.path.getsize(image_path)
-                return size_bytes / 1024  # Convert bytes to KB
+            img_path = row[path_column]
+            if os.path.exists(img_path):
+                # Get file size
+                file_size = os.path.getsize(img_path) / 1024  # Convert to KB
+                
+                # Get image dimensions
+                with Image.open(img_path) as img:
+                    width, height = img.size
+                    
+                # Update dataframe
+                df.at[idx, 'width'] = width
+                df.at[idx, 'height'] = height 
+                df.at[idx, 'file_size_kb'] = file_size
             else:
-                return 0
+                print(f"Warning: File not found: {img_path}")
+                
         except Exception as e:
-            print(f"Error reading image size for {image_path}: {e}")
-            return 0
-
-    # Load the DataFrame from the CSV file
-    df = pd.read_csv(csv_link)
-
-    # Add the size column by calculating the size for each image
-    df[size_column] = df[path_column].apply(get_image_size)
-
-    # Filter out rows where the image size is less than the threshold
-    df = df[df[size_column] >= size_threshold].reset_index(drop=True)
-
-    # Save the updated DataFrame back to the same CSV file
-    df.to_csv(csv_link, index=False)
-    print(f"Updated DataFrame saved to {csv_link}")
-
-# Example usage:
-# 
+            print(f"Error processing {img_path}: {str(e)}")
+            continue
+    
+    # Save updated dataframe
+    df.to_csv(metadata_path, index=False)
+    print(f"Updated metadata saved to: {metadata_path}")
+    
+    # Print statistics
+    print("\nDataset Statistics:")
+    print(f"Total images: {len(df)}")
+    print(f"Images below {size_threshold}KB: {len(df[df['file_size_kb'] < size_threshold])}")
+    print("\nImage sizes:")
+    print(df[['width', 'height', 'file_size_kb']].describe())
