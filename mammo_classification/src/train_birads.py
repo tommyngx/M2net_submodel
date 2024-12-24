@@ -24,9 +24,11 @@ def parse_args():
     parser.add_argument('--model', type=str, default='resnet50',
                       choices=get_supported_models(),
                       help='model architecture to use')
+    parser.add_argument('--resume', type=str, default=None,
+                      help='path to previous model checkpoint')
     return parser.parse_args()
 
-def train_birads(config_path='config/model_config.yaml', model_name='resnet50'):
+def train_birads(config_path='config/model_config.yaml', model_name='resnet50', resume_path=None):
     # Load config first
     print("1. Loading configuration...")
     with open(config_path) as f:
@@ -85,8 +87,19 @@ def train_birads(config_path='config/model_config.yaml', model_name='resnet50'):
         pretrained=config['model']['birads_classifier']['pretrained']
     ).to(device)
     
-    print(f"Model: {model_name}")
-    print(f"Number of classes: {train_dataset.num_classes}")
+    # Load previous checkpoint if specified
+    start_epoch = 0
+    if resume_path:
+        if os.path.isfile(resume_path):
+            print(f"Loading checkpoint: {resume_path}")
+            checkpoint = torch.load(resume_path)
+            model.load_state_dict(checkpoint['model_state_dict'])
+            optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            start_epoch = checkpoint['epoch']
+            best_accuracy = checkpoint['accuracy']
+            print(f"Resumed from epoch {start_epoch} with accuracy: {best_accuracy:.4f}")
+        else:
+            print(f"No checkpoint found at: {resume_path}")
     
     # Training setup
     criterion = torch.nn.CrossEntropyLoss()
@@ -95,7 +108,7 @@ def train_birads(config_path='config/model_config.yaml', model_name='resnet50'):
     
     print("\n4. Starting training...")
     # Training loop
-    for epoch in range(config['model']['birads_classifier']['epochs']):
+    for epoch in range(start_epoch, config['model']['birads_classifier']['epochs']):
         model.train()
         running_loss = 0.0
         
@@ -139,17 +152,21 @@ def train_birads(config_path='config/model_config.yaml', model_name='resnet50'):
                                metrics['accuracy'],
                                metrics['kappa']])
             
-            # Save best model
+            # Save best model with new naming format
             if metrics['accuracy'] > best_accuracy:
                 best_accuracy = metrics['accuracy']
+                model_save_name = f"{model_name}_acc{metrics['accuracy']:.3f}_epoch{epoch+1}.pth"
+                best_model_path = os.path.join(model_dir, model_save_name)
+                
                 torch.save({
                     'epoch': epoch,
                     'model_state_dict': model.state_dict(),
                     'optimizer_state_dict': optimizer.state_dict(),
                     'accuracy': best_accuracy,
+                    'model_name': model_name,
                 }, best_model_path)
                 
-                print(f'\nNew best model saved with accuracy: {best_accuracy:.4f}')
+                print(f'\nNew best model saved: {model_save_name}')
             
             print(f'\nEpoch [{epoch+1}/{config["model"]["birads_classifier"]["epochs"]}]')
             print(f'Average Loss: {running_loss/len(train_loader):.4f}')
@@ -161,4 +178,4 @@ def train_birads(config_path='config/model_config.yaml', model_name='resnet50'):
 
 if __name__ == '__main__':
     args = parse_args()
-    train_birads(config_path=args.config, model_name=args.model)
+    train_birads(config_path=args.config, model_name=args.model, resume_path=args.resume)

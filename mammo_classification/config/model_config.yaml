@@ -35,7 +35,7 @@ training:
   seed: 42
   
 output:
-  base_dir: "/content/M2net_submodel/outputs"
+  base_dir: "/content/outputs"
   model_dir: "models"
   log_dir: "logs"
   metrics:
