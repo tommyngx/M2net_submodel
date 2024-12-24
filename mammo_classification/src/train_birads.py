@@ -45,11 +45,13 @@ def plot_confusion_matrix(y_true, y_pred, classes, save_path):
     plt.close()
 
 def print_class_distribution(dataset, task):
-    """Print the number of images for each class"""
+    """Print the number of images for each class and return class names"""
     class_counts = dataset.df[task].value_counts()
+    class_names = class_counts.index.tolist()
     print(f"\nClass distribution for {task}:")
     for class_label, count in class_counts.items():
         print(f"Class {class_label}: {count} images")
+    return class_names
 
 def train_birads(config_path='config/model_config.yaml', model_name='resnet50', resume_path=None):
     # Load config first
@@ -94,8 +96,8 @@ def train_birads(config_path='config/model_config.yaml', model_name='resnet50', 
     test_dataset = MammographyDataset(metadata_path, split='test', task='birads')
     print(f"Train samples: {len(train_dataset)}, Test samples: {len(test_dataset)}")
     
-    # Print class distribution
-    print_class_distribution(train_dataset, 'birads')
+    # Print class distribution and get class names
+    class_names = print_class_distribution(train_dataset, 'birads')
     print_class_distribution(test_dataset, 'birads')
     
     train_loader = DataLoader(train_dataset, 
@@ -191,7 +193,7 @@ def train_birads(config_path='config/model_config.yaml', model_name='resnet50', 
                 # Save confusion matrix
                 cm_save_path = os.path.join(log_dir, f'confusion_matrix_epoch{epoch+1}.png')
                 plot_confusion_matrix(all_labels, all_preds, 
-                                    classes=train_dataset.labels,
+                                    classes=class_names,
                                     save_path=cm_save_path)
                 
                 # Save model
@@ -210,7 +212,7 @@ def train_birads(config_path='config/model_config.yaml', model_name='resnet50', 
             print(f'Accuracy: {metrics["accuracy"]:.4f}, Kappa Score: {metrics["kappa"]:.4f}')
             print(f'F1-Score: {f1:.4f}')
             print('\nClassification Report:')
-            print(classification_report(all_labels, all_preds, zero_division=0))
+            print(classification_report(all_labels, all_preds, target_names=class_names, zero_division=0))
 
     print(f"\nTraining completed. Best model saved at: {best_model_path}")
     print(f"Training logs saved at: {log_file}")
