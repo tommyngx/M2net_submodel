@@ -1,4 +1,5 @@
 # src/train_birads.py
+import argparse
 import yaml
 import os
 from pathlib import Path
@@ -12,6 +13,18 @@ from models.birads_classifier import BiradsClassifier
 from utils.metrics import calculate_metrics
 import csv
 from datetime import datetime
+
+def get_supported_models():
+    return ['resnet50', 'efficientnet', 'vit', 'convnext']
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Train BIRADS classifier')
+    parser.add_argument('--config', type=str, default='config/model_config.yaml',
+                      help='path to config file')
+    parser.add_argument('--model', type=str, default='resnet50',
+                      choices=get_supported_models(),
+                      help='model architecture to use')
+    return parser.parse_args()
 
 def train_birads(config_path='config/model_config.yaml'):
     # Load config first
@@ -147,4 +160,5 @@ def train_birads(config_path='config/model_config.yaml'):
     print(f"Training logs saved at: {log_file}")
 
 if __name__ == '__main__':
-    train_birads()
+    args = parse_args()
+    train_birads(config_path=args.config)
