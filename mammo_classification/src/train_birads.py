@@ -92,8 +92,8 @@ def train_birads(config_path='config/model_config.yaml', model_name='resnet50', 
         
     # Create datasets
     print("\n2. Creating datasets...")
-    train_dataset = MammographyDataset(metadata_path, split='train', task='birads')
-    test_dataset = MammographyDataset(metadata_path, split='test', task='birads')
+    train_dataset = MammographyDataset(metadata_path, split='train', task='birads', config=config)
+    test_dataset = MammographyDataset(metadata_path, split='test', task='birads', config=config)
     print(f"Train samples: {len(train_dataset)}, Test samples: {len(test_dataset)}")
     
     # Print class distribution and get class names
