@@ -102,12 +102,17 @@ def train_birads(config_path='config/model_config.yaml', model_name='resnet50', 
         pretrained=config['model']['birads_classifier']['pretrained']
     ).to(device)
     
+    # Training setup
+    criterion = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), 
+                               lr=config['model']['birads_classifier']['learning_rate'])
+    
     # Load previous checkpoint if specified
     start_epoch = 0
     if resume_path:
         if os.path.isfile(resume_path):
             print(f"Loading checkpoint: {resume_path}")
-            checkpoint = torch.load(resume_path)
+            checkpoint = torch.load(resume_path, weights_only=True)
             model.load_state_dict(checkpoint['model_state_dict'])
             optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             start_epoch = checkpoint['epoch']
@@ -115,11 +120,6 @@ def train_birads(config_path='config/model_config.yaml', model_name='resnet50', 
             print(f"Resumed from epoch {start_epoch} with accuracy: {best_accuracy:.4f}")
         else:
             print(f"No checkpoint found at: {resume_path}")
-    
-    # Training setup
-    criterion = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), 
-                               lr=config['model']['birads_classifier']['learning_rate'])
     
     print("\n4. Starting training...")
     # Training loop
