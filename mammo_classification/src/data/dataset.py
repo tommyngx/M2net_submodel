@@ -24,12 +24,12 @@ class MammographyDataset(Dataset):
         augmentation_config = config['data']['augmentation']
         resize_dims = augmentation_config['resize']
         self.transform = A.Compose([
-            A.Resize(resize_dims[0], resize_dims[1]),
             A.HorizontalFlip(p=augmentation_config['horizontal_flip']),
             A.VerticalFlip(p=augmentation_config['vertical_flip']),
             A.Rotate(limit=augmentation_config['rotation_range']),
             A.RandomScale(scale_limit=augmentation_config['zoom_range']),
             A.RandomBrightnessContrast(brightness_limit=augmentation_config['brightness_range']),
+            A.Resize(resize_dims[0], resize_dims[1]),
             A.Normalize(),
             ToTensorV2()
         ])
