@@ -16,7 +16,7 @@ class MammographyDataset(Dataset):
         self.df['path'] = self.df['path'].str.replace(old_prefix, new_prefix, regex=False)
         self.df['path2'] = self.df['path2'].str.replace(old_prefix, new_prefix, regex=False)
 
-        upgrade_df_with_image_size_and_save(metadata_path, path_column='path2', size_threshold=20)
+        upgrade_df_with_image_size_and_save(self.df, metadata_path, path_column='path2', size_threshold=20)
         self.df = pd.read_csv(metadata_path)
 
         self.df = self.df[self.df['split'] == split]
@@ -73,7 +73,7 @@ def print_class_distribution(dataset, task):
     return class_names
 
 
-def upgrade_df_with_image_size_and_save(metadata_path, path_column='path2', size_threshold=20):
+def upgrade_df_with_image_size_and_save(df , metadata_path, path_column='path2', size_threshold=20):
     """
     Add image size columns to dataframe without modifying original files
     
@@ -83,7 +83,7 @@ def upgrade_df_with_image_size_and_save(metadata_path, path_column='path2', size
         size_threshold (int): Minimum size in KB to keep image
     """
     # Read existing dataframe
-    df = pd.read_csv(metadata_path)
+    #df = pd.read_csv(metadata_path)
     
     # Add size columns if they don't exist
     if 'width' not in df.columns:
