@@ -25,8 +25,8 @@ data:
   augmentation:
     horizontal_flip: true
     vertical_flip: false
-    rotation_range: 15
-    zoom_range: 0.1
+    rotation_range: 10
+    zoom_range: 0.05
     brightness_range: [0.8, 1.2]
 
 training:
