@@ -36,7 +36,7 @@ training:
   seed: 42
   
 output:
-  base_dir: "/content/outputs"
+  base_dir: "/projects/OsteoLab/Tommy/BreastCancer/SAIGONMEC/Submodels/outputs" # "/content/outputs"
   model_dir: "models"
   log_dir: "logs"
   metrics:
