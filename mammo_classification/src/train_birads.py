@@ -15,6 +15,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import csv
 from datetime import datetime
+import pytz
 
 def get_supported_models():
     return ['resnet50', 'efficientnet', 'vit', 'convnext']
@@ -43,6 +44,13 @@ def plot_confusion_matrix(y_true, y_pred, classes, save_path):
     plt.savefig(save_path)
     plt.close()
 
+def print_class_distribution(dataset, task):
+    """Print the number of images for each class"""
+    class_counts = dataset.df[task].value_counts()
+    print(f"\nClass distribution for {task}:")
+    for class_label, count in class_counts.items():
+        print(f"Class {class_label}: {count} images")
+
 def train_birads(config_path='config/model_config.yaml', model_name='resnet50', resume_path=None):
     # Load config first
     print("1. Loading configuration...")
@@ -50,7 +58,8 @@ def train_birads(config_path='config/model_config.yaml', model_name='resnet50', 
         config = yaml.safe_load(f)
     
     # Create output directories from config
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    sydney_tz = pytz.timezone('Australia/Sydney')
+    timestamp = datetime.now(sydney_tz).strftime('%Y%m%d_%H%M%S')
     base_dir = config['output']['base_dir']
     output_dir = os.path.join(base_dir, 'birads', timestamp)
     model_dir = os.path.join(output_dir, config['output']['model_dir'])
@@ -84,6 +93,10 @@ def train_birads(config_path='config/model_config.yaml', model_name='resnet50', 
     train_dataset = MammographyDataset(metadata_path, split='train', task='birads')
     test_dataset = MammographyDataset(metadata_path, split='test', task='birads')
     print(f"Train samples: {len(train_dataset)}, Test samples: {len(test_dataset)}")
+    
+    # Print class distribution
+    print_class_distribution(train_dataset, 'birads')
+    print_class_distribution(test_dataset, 'birads')
     
     train_loader = DataLoader(train_dataset, 
                             batch_size=config['model']['birads_classifier']['batch_size'],
@@ -197,7 +210,7 @@ def train_birads(config_path='config/model_config.yaml', model_name='resnet50', 
             print(f'Accuracy: {metrics["accuracy"]:.4f}, Kappa Score: {metrics["kappa"]:.4f}')
             print(f'F1-Score: {f1:.4f}')
             print('\nClassification Report:')
-            print(classification_report(all_labels, all_preds))
+            print(classification_report(all_labels, all_preds, zero_division=0))
 
     print(f"\nTraining completed. Best model saved at: {best_model_path}")
     print(f"Training logs saved at: {log_file}")
