@@ -1,7 +1,7 @@
 model:
   birads_classifier:
     input_size: [224, 224]
-    num_classes: 5
+    num_classes: 4
     learning_rate: 0.001
     batch_size: 32
     epochs: 50
@@ -10,7 +10,7 @@ model:
 
   lesion_classifier:
     input_size: [224, 224]
-    num_classes: 2
+    num_classes: 3
     learning_rate: 0.001
     batch_size: 32
     epochs: 50
