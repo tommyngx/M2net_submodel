@@ -75,7 +75,7 @@ def print_class_distribution(dataset, task):
 import pandas as pd
 import os
 
-def upgrade_df_with_image_size_and_save(csv_link, path_column='path2', size_column='size', size_threshold=20):
+def upgrade_df_with_image_size_and_save(csv_link, path_column='path2', size_column='size', size_threshold=10):
     """
     Updates the DataFrame by adding a column with image sizes (in KB), filters out rows with images below a size threshold,
     and saves the updated DataFrame back to the same CSV file.
