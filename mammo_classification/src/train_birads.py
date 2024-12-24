@@ -7,10 +7,12 @@ import torch
 from tqdm import tqdm
 import pandas as pd
 from torch.utils.data import DataLoader
-from sklearn.metrics import accuracy_score, cohen_kappa_score, classification_report
+from sklearn.metrics import accuracy_score, cohen_kappa_score, classification_report, confusion_matrix, f1_score
 from data.dataset import MammographyDataset
 from models.birads_classifier import BiradsClassifier
 from utils.metrics import calculate_metrics
+import seaborn as sns
+import matplotlib.pyplot as plt
 import csv
 from datetime import datetime
 
@@ -27,6 +29,19 @@ def parse_args():
     parser.add_argument('--resume', type=str, default=None,
                       help='path to previous model checkpoint')
     return parser.parse_args()
+
+def plot_confusion_matrix(y_true, y_pred, classes, save_path):
+    """Plot and save confusion matrix"""
+    cm = confusion_matrix(y_true, y_pred)
+    plt.figure(figsize=(10,8))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
+                xticklabels=classes, yticklabels=classes)
+    plt.title('Confusion Matrix')
+    plt.ylabel('True Label')
+    plt.xlabel('Predicted Label')
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()
 
 def train_birads(config_path='config/model_config.yaml', model_name='resnet50', resume_path=None):
     # Load config first
@@ -52,7 +67,7 @@ def train_birads(config_path='config/model_config.yaml', model_name='resnet50', 
     best_accuracy = 0.0
     
     # Create CSV logger with metrics from config
-    metrics_columns = ['epoch', 'train_loss'] + config['output']['metrics']
+    metrics_columns = ['epoch', 'train_loss', 'accuracy', 'f1_score', 'kappa']
     with open(log_file, 'w', newline='') as f:
         writer = csv.writer(f)
         writer.writerow(metrics_columns)
@@ -143,6 +158,7 @@ def train_birads(config_path='config/model_config.yaml', model_name='resnet50', 
             
             # Calculate metrics
             metrics = calculate_metrics(all_labels, all_preds)
+            f1 = f1_score(all_labels, all_preds, average='weighted')
             
             # Log metrics
             with open(log_file, 'a', newline='') as f:
@@ -150,6 +166,7 @@ def train_birads(config_path='config/model_config.yaml', model_name='resnet50', 
                 writer.writerow([epoch + 1, 
                                running_loss/len(train_loader),
                                metrics['accuracy'],
+                               f1,
                                metrics['kappa']])
             
             # Save best model with new naming format
@@ -158,23 +175,38 @@ def train_birads(config_path='config/model_config.yaml', model_name='resnet50', 
                 model_save_name = f"{model_name}_acc{metrics['accuracy']:.3f}_epoch{epoch+1}.pth"
                 best_model_path = os.path.join(model_dir, model_save_name)
                 
+                # Save confusion matrix
+                cm_save_path = os.path.join(log_dir, f'confusion_matrix_epoch{epoch+1}.png')
+                plot_confusion_matrix(all_labels, all_preds, 
+                                    classes=train_dataset.labels,
+                                    save_path=cm_save_path)
+                
+                # Save model
                 torch.save({
                     'epoch': epoch,
                     'model_state_dict': model.state_dict(),
                     'optimizer_state_dict': optimizer.state_dict(),
                     'accuracy': best_accuracy,
+                    'f1_score': f1,
                     'model_name': model_name,
                 }, best_model_path)
                 
                 print(f'\nNew best model saved: {model_save_name}')
-            
-            print(f'\nEpoch [{epoch+1}/{config["model"]["birads_classifier"]["epochs"]}]')
-            print(f'Average Loss: {running_loss/len(train_loader):.4f}')
-            print(f'Validation Accuracy: {metrics["accuracy"]:.4f}')
-            print(f'Validation Kappa: {metrics["kappa"]:.4f}')
+        
+            print(f'Epoch [{epoch+1}/{config["model"]["birads_classifier"]["epochs"]}]')
+            print(f'Accuracy: {metrics["accuracy"]:.4f}, Kappa Score: {metrics["kappa"]:.4f}')
+            print(f'F1-Score: {f1:.4f}')
+            print('\nClassification Report:')
+            print(classification_report(all_labels, all_preds))
 
     print(f"\nTraining completed. Best model saved at: {best_model_path}")
     print(f"Training logs saved at: {log_file}")
+
+    # Verify log file
+    print("\nVerifying log file contents:")
+    with open(log_file, 'r') as f:
+        log_contents = f.read()
+        print(log_contents)
 
 if __name__ == '__main__':
     args = parse_args()
