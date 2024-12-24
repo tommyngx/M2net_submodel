@@ -53,6 +53,17 @@ def print_class_distribution(dataset, task):
         print(f"Class {class_label}: {count} images")
     return class_names
 
+def calculate_class_weights(dataset):
+    """Calculate class weights to handle imbalanced data"""
+    from sklearn.utils.class_weight import compute_class_weight
+    labels = [dataset.label_to_idx[label] for label in dataset.df[dataset.task]]
+    class_weights = compute_class_weight(
+        class_weight='balanced',
+        classes=np.unique(labels),
+        y=labels
+    )
+    return torch.FloatTensor(class_weights).cuda()
+
 def train_birads(config_path='config/model_config.yaml', model_name='resnet50', resume_path=None):
     # Load config first
     print("1. Loading configuration...")
@@ -117,8 +128,14 @@ def train_birads(config_path='config/model_config.yaml', model_name='resnet50', 
         pretrained=config['model']['birads_classifier']['pretrained']
     ).to(device)
     
+    # Calculate class weights
+    class_weights = calculate_class_weights(train_dataset)
+    print("\nClass weights:", class_weights)
+    
+    # Update loss function with class weights
+    criterion = torch.nn.CrossEntropyLoss(weight=class_weights)
+    
     # Training setup
-    criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), 
                                lr=config['model']['birads_classifier']['learning_rate'])
     
@@ -173,7 +190,7 @@ def train_birads(config_path='config/model_config.yaml', model_name='resnet50', 
             
             # Calculate metrics
             metrics = calculate_metrics(all_labels, all_preds)
-            f1 = f1_score(all_labels, all_preds, average='weighted')
+            f1 = f1_score(all_labels, all_preds, average='weighted', zero_division=0)
             
             # Log metrics
             with open(log_file, 'a', newline='') as f:
