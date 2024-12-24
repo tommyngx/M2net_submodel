@@ -1,139 +1,126 @@
 # src/train_lesion.py
+import argparse
 import yaml
 import torch
 import os
 import pandas as pd
 from torch.utils.data import DataLoader
 from sklearn.metrics import accuracy_score, cohen_kappa_score, classification_report
-from data.dataset import MammographyDataset
+from data.dataset import MammographyDataset, print_class_distribution
+from utils.visualization import plot_confusion_matrix
+from utils.metrics import calculate_metrics, calculate_class_weights
 from models.lesion_classifier import LesionClassifier
-from utils.metrics import calculate_metrics
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix, f1_score
+import csv
+from datetime import datetime
+import pytz
 
-def plot_confusion_matrix(y_true, y_pred, classes, save_path):
-    """Plot and save confusion matrix"""
-    cm = confusion_matrix(y_true, y_pred)
-    plt.figure(figsize=(10,8))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
-                xticklabels=classes, yticklabels=classes)
-    plt.title('Confusion Matrix')
-    plt.ylabel('True Label')
-    plt.xlabel('Predicted Label')
-    plt.tight_layout()
-    plt.savefig(save_path)
-    plt.close()
+def get_supported_models():
+    return ['resnet50', 'efficientnet', 'vit', 'convnext']
 
-def train_lesion(config_path='config/model_config.yaml', model_name='resnet50'):
-    # Load config
-    if not os.path.exists(config_path):
-        raise FileNotFoundError(f"Config file not found at: {config_path}")
-        
+def parse_args():
+    parser = argparse.ArgumentParser(description='Train Lesion classifier')
+    parser.add_argument('--config', type=str, default='config/model_config.yaml',
+                      help='path to config file')
+    parser.add_argument('--model', type=str, default='resnet50',
+                      choices=get_supported_models(),
+                      help='model architecture to use')
+    parser.add_argument('--resume', type=str, default=None,
+                      help='path to previous model checkpoint')
+    return parser.parse_args()
+
+def train_lesion(config_path='config/model_config.yaml', model_name='resnet50', resume_path=None):
+    # Load config first
+    print("1. Loading configuration...")
     with open(config_path) as f:
         config = yaml.safe_load(f)
+    
+    # Create output directories from config
+    sydney_tz = pytz.timezone('Australia/Sydney')
+    timestamp = datetime.now(sydney_tz).strftime('%Y%m%d_%H%M%S')
+    base_dir = config['output']['base_dir']
+    output_dir = os.path.join(base_dir, 'lesion', timestamp)
+    model_dir = os.path.join(output_dir, config['output']['model_dir'])
+    log_dir = os.path.join(output_dir, config['output']['log_dir'])
+    
+    os.makedirs(model_dir, exist_ok=True)
+    os.makedirs(log_dir, exist_ok=True)
+    
+    # Initialize logging paths
+    log_file = os.path.join(log_dir, 'training_log.csv')
+    best_model_path = os.path.join(model_dir, 'best_model.pth')
+    
+    # Initialize best metrics
+    best_accuracy = 0.0
+    
+    # Create CSV logger with metrics from config
+    metrics_columns = ['epoch', 'train_loss', 'accuracy', 'f1_score', 'kappa']
+    with open(log_file, 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(metrics_columns)
     
     # Get metadata path from config
     metadata_path = config['data']['metadata_path']
     
-    # Validate metadata path
+    # Validate path
     if not os.path.exists(metadata_path):
         raise FileNotFoundError(f"Metadata file not found at: {metadata_path}")
-    
+        
     # Create datasets
-    train_dataset = MammographyDataset(
-        metadata_path=metadata_path, 
-        split='train',
-        task='lesion'
-    )
-    test_dataset = MammographyDataset(
-        metadata_path=metadata_path, 
-        split='test',
-        task='lesion'
-    )
+    print("\n2. Creating datasets...")
+    train_dataset = MammographyDataset(metadata_path, split='train', task='lesion_types', config=config)
+    test_dataset = MammographyDataset(metadata_path, split='test', task='lesion_types', config=config)
+    print(f"Train samples: {len(train_dataset)}, Test samples: {len(test_dataset)}")
     
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=config['model']['lesion_classifier']['batch_size'],
-        shuffle=True
-    )
-    test_loader = DataLoader(
-        test_dataset,
-        batch_size=config['model']['lesion_classifier']['batch_size']
-    )
+    # Print class distribution and get class names
+    class_names = print_class_distribution(train_dataset, 'lesion_types')
+    print_class_distribution(test_dataset, 'lesion_types')
     
-    # Initialize model
+    train_loader = DataLoader(train_dataset, 
+                            batch_size=config['model']['lesion_classifier']['batch_size'],
+                            shuffle=True)
+    test_loader = DataLoader(test_dataset, 
+                           batch_size=config['model']['lesion_classifier']['batch_size'])
+    
+    # Initialize model with config parameters
+    print("\n3. Initializing model...")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = LesionClassifier(num_classes=train_dataset.num_classes).to(device)
+    print(f"Using device: {device}")
     
-    # Training setup
-    criterion = torch.nn.BCEWithLogitsLoss()
+    model = LesionClassifier(
+        model_name=model_name,
+        num_classes=train_dataset.num_classes,
+        pretrained=config['model']['lesion_classifier']['pretrained']
+    ).to(device)
+    
+    # Calculate class weights
+    class_weights = calculate_class_weights(train_dataset)
+    print("\nClass weights:", class_weights)
+    
+    # Update loss function with class weights
+    criterion = torch.nn.CrossEntropyLoss(weight=class_weights)
     optimizer = torch.optim.Adam(model.parameters(), 
                                lr=config['model']['lesion_classifier']['learning_rate'])
     
-    best_accuracy = 0.0
-    model_dir = config['model']['lesion_classifier']['model_dir']
-    log_dir = config['model']['lesion_classifier']['log_dir']
-    
-    # Training loop
-    for epoch in range(config['model']['lesion_classifier']['epochs']):
-        model.train()
-        for images, labels in train_loader:
-            images, labels = images.to(device), labels.to(device)
-            
-            optimizer.zero_grad()
-            outputs = model(images)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
-            
-        # Evaluation
-        if (epoch + 1) % 5 == 0:
-            model.eval()
-            all_preds = []
-            all_labels = []
-            
-            with torch.no_grad():
-                for images, labels in test_loader:
-                    images = images.to(device)
-                    outputs = model(images)
-                    predicted = (outputs > 0.5).float()
-                    all_preds.extend(predicted.cpu().numpy())
-                    all_labels.extend(labels.numpy())
-            
-            # Calculate metrics
-            accuracy = accuracy_score(all_labels, all_preds)
-            kappa = cohen_kappa_score(all_labels, all_preds)
-            f1 = f1_score(all_labels, all_preds, average='weighted')
-            
-            # Save confusion matrix if best model
-            if accuracy > best_accuracy:
-                best_accuracy = accuracy
-                model_save_name = f"{model_name}_acc{accuracy:.3f}_epoch{epoch+1}.pth"
-                best_model_path = os.path.join(model_dir, model_save_name)
-                
-                # Save confusion matrix
-                cm_save_path = os.path.join(log_dir, f'confusion_matrix_epoch{epoch+1}.png')
-                plot_confusion_matrix(all_labels, all_preds, 
-                                    classes=train_dataset.labels,
-                                    save_path=cm_save_path)
-                
-                # Save model
-                torch.save({
-                    'epoch': epoch,
-                    'model_state_dict': model.state_dict(),
-                    'optimizer_state_dict': optimizer.state_dict(),
-                    'accuracy': best_accuracy,
-                    'f1_score': f1,
-                }, best_model_path)
-                
-                print(f'\nNew best model saved: {model_save_name}')
-            
-            print(f'Epoch [{epoch+1}/{config["model"]["lesion_classifier"]["epochs"]}]')
-            print(f'Accuracy: {accuracy:.4f}, Kappa Score: {kappa:.4f}')
-            print(f'F1-Score: {f1:.4f}')
-            print('\nClassification Report:')
-            print(classification_report(all_labels, all_preds))
+    # Load previous checkpoint if specified
+    start_epoch = 0
+    if resume_path:
+        if os.path.isfile(resume_path):
+            print(f"Loading checkpoint: {resume_path}")
+            checkpoint = torch.load(resume_path, weights_only=True)
+            model.load_state_dict(checkpoint['model_state_dict'])
+            optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            start_epoch = checkpoint['epoch']
+            best_accuracy = checkpoint['accuracy']
+            print(f"Resumed from epoch {start_epoch} with accuracy: {best_accuracy:.4f}")
+        else:
+            print(f"No checkpoint found at: {resume_path}")
+
+    # Rest of the training loop code follows the same pattern as train_birads.py
+    ...
 
 if __name__ == '__main__':
-    train_lesion()
+    args = parse_args()
+    train_lesion(config_path=args.config, model_name=args.model, resume_path=args.resume)

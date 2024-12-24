@@ -9,7 +9,9 @@ import pandas as pd
 import numpy as np
 from torch.utils.data import DataLoader
 from sklearn.metrics import accuracy_score, cohen_kappa_score, classification_report, confusion_matrix, f1_score
-from data.dataset import MammographyDataset
+from data.dataset import MammographyDataset, print_class_distribution
+from utils.visualization import plot_confusion_matrix
+from utils.metrics import calculate_metrics, calculate_class_weights
 from models.birads_classifier import BiradsClassifier
 from utils.metrics import calculate_metrics
 import seaborn as sns
@@ -31,39 +33,6 @@ def parse_args():
     parser.add_argument('--resume', type=str, default=None,
                       help='path to previous model checkpoint')
     return parser.parse_args()
-
-def plot_confusion_matrix(y_true, y_pred, classes, save_path):
-    """Plot and save confusion matrix"""
-    cm = confusion_matrix(y_true, y_pred)
-    plt.figure(figsize=(10,8))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
-                xticklabels=classes, yticklabels=classes)
-    plt.title('Confusion Matrix')
-    plt.ylabel('True Label')
-    plt.xlabel('Predicted Label')
-    plt.tight_layout()
-    plt.savefig(save_path)
-    plt.close()
-
-def print_class_distribution(dataset, task):
-    """Print the number of images for each class and return class names"""
-    class_counts = dataset.df[task].value_counts()
-    class_names = class_counts.index.tolist()
-    print(f"\nClass distribution for {task}:")
-    for class_label, count in class_counts.items():
-        print(f"Class {class_label}: {count} images")
-    return class_names
-
-def calculate_class_weights(dataset):
-    """Calculate class weights to handle imbalanced data"""
-    from sklearn.utils.class_weight import compute_class_weight
-    labels = [dataset.label_to_idx[label] for label in dataset.df[dataset.task]]
-    class_weights = compute_class_weight(
-        class_weight='balanced',
-        classes=np.unique(labels),
-        y=labels
-    )
-    return torch.FloatTensor(class_weights).cuda()
 
 def train_birads(config_path='config/model_config.yaml', model_name='resnet50', resume_path=None):
     # Load config first

@@ -1,4 +1,7 @@
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, cohen_kappa_score
+import torch
+import numpy as np
+from sklearn.utils.class_weight import compute_class_weight
 
 def calculate_metrics(y_true, y_pred):
     """
@@ -19,3 +22,13 @@ def calculate_metrics(y_true, y_pred):
         'kappa': cohen_kappa_score(y_true, y_pred)
     }
     return metrics
+
+def calculate_class_weights(dataset):
+    """Calculate class weights to handle imbalanced data"""
+    labels = [dataset.label_to_idx[label] for label in dataset.df[dataset.task]]
+    class_weights = compute_class_weight(
+        class_weight='balanced',
+        classes=np.unique(labels),
+        y=labels
+    )
+    return torch.FloatTensor(class_weights).cuda()

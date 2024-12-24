@@ -1,4 +1,9 @@
-def plot_confusion_matrix(cm, classes, title='Confusion Matrix', cmap=None):
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix
+
+
+def plot_confusion_matrix2(cm, classes, title='Confusion Matrix', cmap=None):
     import matplotlib.pyplot as plt
     import numpy as np
 
@@ -36,3 +41,18 @@ def plot_roc_curve(fpr, tpr, title='Receiver Operating Characteristic'):
     plt.title(title)
     plt.legend(loc='lower right')
     plt.show()
+
+
+
+def plot_confusion_matrix(y_true, y_pred, classes, save_path):
+    """Plot and save confusion matrix"""
+    cm = confusion_matrix(y_true, y_pred)
+    plt.figure(figsize=(10,8))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
+                xticklabels=classes, yticklabels=classes)
+    plt.title('Confusion Matrix')
+    plt.ylabel('True Label')
+    plt.xlabel('Predicted Label')
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()

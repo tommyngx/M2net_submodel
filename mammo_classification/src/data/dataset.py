@@ -51,3 +51,12 @@ class MammographyDataset(Dataset):
             label = self.label_to_idx[row['lesion_types']]
             
         return image, label
+
+def print_class_distribution(dataset, task):
+    """Print the number of images for each class and return class names"""
+    class_counts = dataset.df[task].value_counts()
+    class_names = class_counts.index.tolist()
+    print(f"\nClass distribution for {task}:")
+    for class_label, count in class_counts.items():
+        print(f"Class {class_label}: {count} images")
+    return class_names
