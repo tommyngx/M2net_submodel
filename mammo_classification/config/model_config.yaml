@@ -6,7 +6,7 @@ model:
     pretrained: true
     learning_rate: 0.001
     batch_size: 32
-    epochs: 5
+    epochs: 50
     optimizer: Adam
     loss_function: CrossEntropyLoss
 
