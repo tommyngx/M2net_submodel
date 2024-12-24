@@ -8,6 +8,12 @@ from torch.utils.data import Dataset
 class MammographyDataset(Dataset):
     def __init__(self, metadata_path, split, task, config):
         self.df = pd.read_csv(metadata_path)
+        old_prefix = '/content/'
+        new_prefix = config['data']['image_dir']
+
+        self.df['path'] = self.df['path'].str.replace(old_prefix, new_prefix, regex=False)
+        self.df['path2'] = self.df['path2'].str.replace(old_prefix, new_prefix, regex=False)
+
         self.df = self.df[self.df['split'] == split]
         self.task = task
         
@@ -39,7 +45,7 @@ class MammographyDataset(Dataset):
 
     def __getitem__(self, idx):
         row = self.df.iloc[idx]
-        image = Image.open(row['path']).convert('RGB')
+        image = Image.open(row['path2']).convert('RGB')
         image = np.array(image)
         
         if self.transform:
