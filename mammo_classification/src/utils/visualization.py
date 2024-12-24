@@ -56,3 +56,41 @@ def plot_confusion_matrix(y_true, y_pred, classes, save_path):
     plt.tight_layout()
     plt.savefig(save_path)
     plt.close()
+
+
+def plot_predictions(images, labels, predictions, class_names, save_path, num_samples=12):
+    """Plot grid of images with ground truth and predicted labels"""
+    import matplotlib.pyplot as plt
+    import torch
+    import numpy as np
+    
+    # Convert tensors to numpy arrays
+    images = images.cpu().numpy()
+    
+    # Create grid plot
+    fig, axes = plt.subplots(3, 4, figsize=(15, 12))
+    axes = axes.ravel()
+    
+    for idx in range(num_samples):
+        # Get single image and convert from CHW to HWC format
+        img = np.transpose(images[idx], (1, 2, 0))
+        
+        # Denormalize image
+        img = img * np.array([0.229, 0.224, 0.225]) + np.array([0.485, 0.456, 0.406])
+        img = np.clip(img, 0, 1)
+        
+        # Plot image
+        axes[idx].imshow(img)
+        axes[idx].axis('off')
+        
+        # Add ground truth and prediction labels
+        true_label = class_names[labels[idx]]
+        pred_label = class_names[predictions[idx]]
+        color = 'green' if true_label == pred_label else 'red'
+        
+        axes[idx].set_title(f'True: {true_label}\nPred: {pred_label}', 
+                           color=color, fontsize=10)
+    
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()

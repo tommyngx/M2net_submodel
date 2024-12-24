@@ -10,7 +10,7 @@ import numpy as np
 from torch.utils.data import DataLoader
 from sklearn.metrics import accuracy_score, cohen_kappa_score, classification_report, confusion_matrix, f1_score
 from data.dataset import MammographyDataset, print_class_distribution
-from utils.visualization import plot_confusion_matrix
+from utils.visualization import plot_confusion_matrix, plot_predictions
 from utils.metrics import calculate_metrics, calculate_class_weights
 from models.birads_classifier import BiradsClassifier
 from utils.metrics import calculate_metrics
@@ -176,6 +176,22 @@ def train_birads(config_path='config/model_config.yaml', model_name='resnet50', 
                 best_accuracy = metrics['accuracy']
                 model_save_name = f"{model_name}_acc{metrics['accuracy']:.3f}_epoch{epoch+1}.pth"
                 best_model_path = os.path.join(model_dir, model_save_name)
+                
+                # Get random test samples
+                with torch.no_grad():
+                    test_iter = iter(test_loader)
+                    images, labels = next(test_iter)
+                    images = images.to(device)
+                    outputs = model(images)
+                    _, predictions = torch.max(outputs.data, 1)
+                    
+                    # Save prediction examples
+                    examples_path = os.path.join(log_dir, f'predictions_epoch{epoch+1}.png')
+                    plot_predictions(images[:12], 
+                                    labels[:12].cpu().numpy(),
+                                    predictions[:12].cpu().numpy(),
+                                    class_names,
+                                    examples_path)
                 
                 # Save confusion matrix
                 cm_save_path = os.path.join(log_dir, f'confusion_matrix_epoch{epoch+1}.png')
