@@ -10,12 +10,37 @@ from sklearn.metrics import accuracy_score, cohen_kappa_score, classification_re
 from data.dataset import MammographyDataset
 from models.birads_classifier import BiradsClassifier
 from utils.metrics import calculate_metrics
+import csv
+from datetime import datetime
 
 def train_birads(config_path='config/model_config.yaml'):
-    # Load config
+    # Load config first
     print("1. Loading configuration...")
     with open(config_path) as f:
         config = yaml.safe_load(f)
+    
+    # Create output directories from config
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    base_dir = config['output']['base_dir']
+    output_dir = os.path.join(base_dir, 'birads', timestamp)
+    model_dir = os.path.join(output_dir, config['output']['model_dir'])
+    log_dir = os.path.join(output_dir, config['output']['log_dir'])
+    
+    os.makedirs(model_dir, exist_ok=True)
+    os.makedirs(log_dir, exist_ok=True)
+    
+    # Initialize logging paths
+    log_file = os.path.join(log_dir, 'training_log.csv')
+    best_model_path = os.path.join(model_dir, 'best_model.pth')
+    
+    # Initialize best metrics
+    best_accuracy = 0.0
+    
+    # Create CSV logger with metrics from config
+    metrics_columns = ['epoch', 'train_loss'] + config['output']['metrics']
+    with open(log_file, 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(metrics_columns)
     
     # Get metadata path from config
     metadata_path = config['data']['metadata_path']
@@ -77,7 +102,7 @@ def train_birads(config_path='config/model_config.yaml'):
             progress_bar.set_postfix({'loss': f'{running_loss/(i+1):.4f}'})
             
         # Evaluation
-        if (epoch + 1) % 5 == 0:
+        if (epoch + 1) % 2 == 0:
             model.eval()
             all_preds = []
             all_labels = []
@@ -90,12 +115,36 @@ def train_birads(config_path='config/model_config.yaml'):
                     all_preds.extend(predicted.cpu().numpy())
                     all_labels.extend(labels.numpy())
             
-            # Calculate all metrics at once
+            # Calculate metrics
             metrics = calculate_metrics(all_labels, all_preds)
+            
+            # Log metrics
+            with open(log_file, 'a', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow([epoch + 1, 
+                               running_loss/len(train_loader),
+                               metrics['accuracy'],
+                               metrics['kappa']])
+            
+            # Save best model
+            if metrics['accuracy'] > best_accuracy:
+                best_accuracy = metrics['accuracy']
+                torch.save({
+                    'epoch': epoch,
+                    'model_state_dict': model.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'accuracy': best_accuracy,
+                }, best_model_path)
+                
+                print(f'\nNew best model saved with accuracy: {best_accuracy:.4f}')
             
             print(f'\nEpoch [{epoch+1}/{config["model"]["birads_classifier"]["epochs"]}]')
             print(f'Average Loss: {running_loss/len(train_loader):.4f}')
-            print(f'Metrics: {metrics}')
+            print(f'Validation Accuracy: {metrics["accuracy"]:.4f}')
+            print(f'Validation Kappa: {metrics["kappa"]:.4f}')
+
+    print(f"\nTraining completed. Best model saved at: {best_model_path}")
+    print(f"Training logs saved at: {log_file}")
 
 if __name__ == '__main__':
     train_birads()

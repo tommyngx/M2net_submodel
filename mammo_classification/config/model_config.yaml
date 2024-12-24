@@ -33,3 +33,18 @@ training:
   validation_split: 0.2
   shuffle: true
   seed: 42
+  
+output:
+  base_dir: "/content/M2net_submodel/outputs"
+  model_dir: "models"
+  log_dir: "logs"
+  metrics:
+    - accuracy
+    - precision
+    - recall
+    - f1
+    - kappa
+  save_best_only: true
+  early_stopping:
+    patience: 10
+    min_delta: 0.001
