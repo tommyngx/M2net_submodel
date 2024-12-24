@@ -26,7 +26,7 @@ def parse_args():
                       help='model architecture to use')
     return parser.parse_args()
 
-def train_birads(config_path='config/model_config.yaml'):
+def train_birads(config_path='config/model_config.yaml', model_name='resnet50'):
     # Load config first
     print("1. Loading configuration...")
     with open(config_path) as f:
@@ -80,12 +80,12 @@ def train_birads(config_path='config/model_config.yaml'):
     print(f"Using device: {device}")
     
     model = BiradsClassifier(
-        model_name=config['model']['birads_classifier']['model_name'],
+        model_name=model_name,
         num_classes=train_dataset.num_classes,
         pretrained=config['model']['birads_classifier']['pretrained']
     ).to(device)
     
-    print(f"Model: {config['model']['birads_classifier']['model_name']}")
+    print(f"Model: {model_name}")
     print(f"Number of classes: {train_dataset.num_classes}")
     
     # Training setup
@@ -161,4 +161,4 @@ def train_birads(config_path='config/model_config.yaml'):
 
 if __name__ == '__main__':
     args = parse_args()
-    train_birads(config_path=args.config)
+    train_birads(config_path=args.config, model_name=args.model)
