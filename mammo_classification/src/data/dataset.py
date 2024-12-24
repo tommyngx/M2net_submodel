@@ -8,11 +8,15 @@ from torch.utils.data import Dataset
 class MammographyDataset(Dataset):
     def __init__(self, metadata_path, split, task, config):
         self.df = pd.read_csv(metadata_path)
+
         old_prefix = '/content/'
         new_prefix = config['data']['image_dir']
 
         self.df['path'] = self.df['path'].str.replace(old_prefix, new_prefix, regex=False)
         self.df['path2'] = self.df['path2'].str.replace(old_prefix, new_prefix, regex=False)
+
+        upgrade_df_with_image_size_and_save(metadata_path, path_column='path2', size_threshold=20)
+        self.df = pd.read_csv(metadata_path)
 
         self.df = self.df[self.df['split'] == split]
         self.task = task
@@ -66,3 +70,48 @@ def print_class_distribution(dataset, task):
     for class_label, count in class_counts.items():
         print(f"Class {class_label}: {count} images")
     return class_names
+
+
+import pandas as pd
+import os
+
+def upgrade_df_with_image_size_and_save(csv_link, path_column='path2', size_column='size', size_threshold=20):
+    """
+    Updates the DataFrame by adding a column with image sizes (in KB), filters out rows with images below a size threshold,
+    and saves the updated DataFrame back to the same CSV file.
+
+    Parameters:
+    - csv_link (str): Path to the CSV file containing the DataFrame.
+    - path_column (str): The name of the column containing the image paths.
+    - size_column (str): The name of the new column to store image sizes in KB.
+    - size_threshold (int): The minimum file size (in KB) to retain an image.
+
+    Returns:
+    - None
+    """
+    def get_image_size(image_path):
+        try:
+            if os.path.exists(image_path):
+                size_bytes = os.path.getsize(image_path)
+                return size_bytes / 1024  # Convert bytes to KB
+            else:
+                return 0
+        except Exception as e:
+            print(f"Error reading image size for {image_path}: {e}")
+            return 0
+
+    # Load the DataFrame from the CSV file
+    df = pd.read_csv(csv_link)
+
+    # Add the size column by calculating the size for each image
+    df[size_column] = df[path_column].apply(get_image_size)
+
+    # Filter out rows where the image size is less than the threshold
+    df = df[df[size_column] >= size_threshold].reset_index(drop=True)
+
+    # Save the updated DataFrame back to the same CSV file
+    df.to_csv(csv_link, index=False)
+    print(f"Updated DataFrame saved to {csv_link}")
+
+# Example usage:
+# 
