@@ -32,9 +32,13 @@ def train_birads(config_path='config/model_config.yaml'):
     test_loader = DataLoader(test_dataset, 
                            batch_size=config['model']['birads_classifier']['batch_size'])
     
-    # Initialize model
+    # Initialize model with config parameters
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = BiradsClassifier(num_classes=train_dataset.num_classes).to(device)
+    model = BiradsClassifier(
+        model_name=config['model']['birads_classifier']['model_name'],
+        num_classes=train_dataset.num_classes,
+        pretrained=config['model']['birads_classifier']['pretrained']
+    ).to(device)
     
     # Training setup
     criterion = torch.nn.CrossEntropyLoss()

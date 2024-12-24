@@ -1,7 +1,9 @@
 model:
   birads_classifier:
+    model_name: 'resnet50'  # Add model architecture
     input_size: [224, 224]
     num_classes: 4
+    pretrained: true
     learning_rate: 0.001
     batch_size: 32
     epochs: 50
