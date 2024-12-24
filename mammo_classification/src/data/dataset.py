@@ -7,13 +7,6 @@ from torch.utils.data import Dataset
 
 class MammographyDataset(Dataset):
     def __init__(self, metadata_path, split, task, config):
-        """
-        Args:
-            metadata_path: Path to CSV file with columns [path, birads, lesion_types, split]
-            split: 'train' or 'test'
-            task: 'birads' or 'lesion'
-            config: Configuration dictionary containing augmentation parameters
-        """
         self.df = pd.read_csv(metadata_path)
         self.df = self.df[self.df['split'] == split]
         self.task = task
@@ -29,8 +22,9 @@ class MammographyDataset(Dataset):
         
         # Load augmentations from config
         augmentation_config = config['data']['augmentation']
+        resize_dims = augmentation_config['resize']
         self.transform = A.Compose([
-            A.Resize(224, 224),
+            A.Resize(resize_dims[0], resize_dims[1]),
             A.HorizontalFlip(p=augmentation_config['horizontal_flip']),
             A.VerticalFlip(p=augmentation_config['vertical_flip']),
             A.Rotate(limit=augmentation_config['rotation_range']),
