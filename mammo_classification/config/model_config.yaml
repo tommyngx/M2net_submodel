@@ -21,7 +21,7 @@ model:
 
 data:
   metadata_path: '/projects/OsteoLab/Tommy/BreastCancer/Code/M2net_submodel/data/metadata.csv' # "/content/M2net_submodel/data/metadata.csv"
-  image_dir:  '/projects/OsteoLab/Tommy/BreastCancer/SAIGONMEC/Submodels/dataset' # "/content"
+  image_dir:  '/projects/OsteoLab/Tommy/BreastCancer/SAIGONMEC/Submodels/' # "/content"
   augmentation:
     resize: [224, 224]
     horizontal_flip: false
