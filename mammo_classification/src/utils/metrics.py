@@ -1,17 +1,21 @@
-def accuracy(y_true, y_pred):
-    return sum(y_true == y_pred) / len(y_true)
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, cohen_kappa_score
 
-def precision(y_true, y_pred):
-    true_positives = sum((y_true == 1) & (y_pred == 1))
-    predicted_positives = sum(y_pred == 1)
-    return true_positives / predicted_positives if predicted_positives > 0 else 0
-
-def recall(y_true, y_pred):
-    true_positives = sum((y_true == 1) & (y_pred == 1))
-    actual_positives = sum(y_true == 1)
-    return true_positives / actual_positives if actual_positives > 0 else 0
-
-def f1_score(y_true, y_pred):
-    prec = precision(y_true, y_pred)
-    rec = recall(y_true, y_pred)
-    return 2 * (prec * rec) / (prec + rec) if (prec + rec) > 0 else 0
+def calculate_metrics(y_true, y_pred):
+    """
+    Calculate various classification metrics
+    
+    Args:
+        y_true: Ground truth labels
+        y_pred: Predicted labels
+        
+    Returns:
+        dict: Dictionary containing various metrics
+    """
+    metrics = {
+        'accuracy': accuracy_score(y_true, y_pred),
+        'precision': precision_score(y_true, y_pred, average='weighted'),
+        'recall': recall_score(y_true, y_pred, average='weighted'),
+        'f1': f1_score(y_true, y_pred, average='weighted'),
+        'kappa': cohen_kappa_score(y_true, y_pred)
+    }
+    return metrics

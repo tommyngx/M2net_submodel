@@ -67,13 +67,12 @@ def train_birads(config_path='config/model_config.yaml'):
                     all_preds.extend(predicted.cpu().numpy())
                     all_labels.extend(labels.numpy())
             
-            accuracy = accuracy_score(all_labels, all_preds)
-            kappa = cohen_kappa_score(all_labels, all_preds)
+            # Calculate all metrics at once
+            metrics = calculate_metrics(all_labels, all_preds)
             
             print(f'Epoch [{epoch+1}/{config["model"]["birads_classifier"]["epochs"]}]')
-            print(f'Accuracy: {accuracy:.4f}, Kappa Score: {kappa:.4f}')
-            print('\nClassification Report:')
-            print(classification_report(all_labels, all_preds))
+            print(f'Accuracy: {metrics["accuracy"]:.4f}, Kappa Score: {metrics["kappa"]:.4f}')
+            print(f'Precision: {metrics["precision"]:.4f}, Recall: {metrics["recall"]:.4f}, F1: {metrics["f1"]:.4f}')
 
 if __name__ == '__main__':
     train_birads()
