@@ -23,6 +23,7 @@ data:
   metadata_path: "/content/M2net_submodel/data/metadata.csv"
   image_dir: "/content"
   augmentation:
+    resize: [224, 224]
     horizontal_flip: false
     vertical_flip: false
     rotation_range: 10
