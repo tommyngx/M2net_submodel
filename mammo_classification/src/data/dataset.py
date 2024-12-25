@@ -16,7 +16,7 @@ class MammographyDataset(Dataset):
         self.df['path'] = self.df['path'].str.replace(old_prefix, new_prefix, regex=False)
         self.df['path2'] = self.df['path2'].str.replace(old_prefix, new_prefix, regex=False)
 
-        upgrade_df_with_image_size_and_save(self.df, metadata_path, path_column='path2', size_threshold=20)
+        upgrade_df_with_image_size_and_save(self.df, metadata_path, path_column='path2')
         self.df = pd.read_csv(metadata_path)
 
         self.df = self.df[self.df['split'] == split]
@@ -73,7 +73,7 @@ def print_class_distribution(dataset, task):
     return class_names
 
 
-def upgrade_df_with_image_size_and_save(df, metadata_path, path_column='path2', size_threshold=15):
+def upgrade_df_with_image_size_and_save(df, metadata_path, path_column='path2', size_threshold=8):
     """Add image size columns and remove small files from dataframe"""
     # Read existing dataframe
     #df = pd.read_csv(metadata_path)
