@@ -16,7 +16,7 @@ class MammographyDataset(Dataset):
         self.df['path'] = self.df['path'].str.replace(old_prefix, new_prefix, regex=False)
         self.df['path2'] = self.df['path2'].str.replace(old_prefix, new_prefix, regex=False)
 
-        upgrade_df_with_image_size_and_save(self.df, metadata_path, path_column='path2', size_threshold=20)
+        upgrade_df_with_image_size_and_save(df, metadata_path, path_column='path2', size_threshold=20)
         self.df = pd.read_csv(metadata_path)
 
         self.df = self.df[self.df['split'] == split]
@@ -73,56 +73,36 @@ def print_class_distribution(dataset, task):
     return class_names
 
 
-def upgrade_df_with_image_size_and_save(df , metadata_path, path_column='path2', size_threshold=20):
-    """
-    Add image size columns to dataframe without modifying original files
-    
-    Args:
-        metadata_path (str): Path to metadata CSV
-        path_column (str): Column name containing image paths
-        size_threshold (int): Minimum size in KB to keep image
-    """
+def upgrade_df_with_image_size_and_save(df, metadata_path, path_column='path2', size_threshold=20):
+    """Add image size columns and remove small files from dataframe"""
     # Read existing dataframe
     #df = pd.read_csv(metadata_path)
+    initial_count = len(df)
     
-    # Add size columns if they don't exist
-    if 'width' not in df.columns:
-        df['width'] = None
-    if 'height' not in df.columns:
-        df['height'] = None
-    if 'file_size_kb' not in df.columns:
-        df['file_size_kb'] = None
-        
+    # Add size columns
+    df['width'] = None
+    df['height'] = None
+    df['file_size_kb'] = None
+    
     # Update size information
     for idx, row in df.iterrows():
         try:
             img_path = row[path_column]
             if os.path.exists(img_path):
-                # Get file size
-                file_size = os.path.getsize(img_path) / 1024  # Convert to KB
-                
-                # Get image dimensions
+                file_size = os.path.getsize(img_path) / 1024
                 with Image.open(img_path) as img:
                     width, height = img.size
-                    
-                # Update dataframe
                 df.at[idx, 'width'] = width
                 df.at[idx, 'height'] = height 
                 df.at[idx, 'file_size_kb'] = file_size
-            else:
-                print(f"Warning: File not found: {img_path}")
-                
         except Exception as e:
-            print(f"Error processing {img_path}: {str(e)}")
+            df.at[idx, 'file_size_kb'] = 0
             continue
+    
+    # Remove small files
+    df = df[df['file_size_kb'] >= size_threshold]
+    final_count = len(df)
     
     # Save updated dataframe
     df.to_csv(metadata_path, index=False)
-    print(f"Updated metadata saved to: {metadata_path}")
-    
-    # Print statistics
-    print("\nDataset Statistics:")
-    print(f"Total images: {len(df)}")
-    print(f"Images below {size_threshold}KB: {len(df[df['file_size_kb'] < size_threshold])}")
-    print("\nImage sizes:")
-    print(df[['width', 'height', 'file_size_kb']].describe())
+    print(f"Files before: {initial_count}, after: {final_count} (removed {initial_count - final_count} files < {size_threshold}KB)")
