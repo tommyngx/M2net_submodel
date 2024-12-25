@@ -42,6 +42,7 @@ class MammographyDataset(Dataset):
             A.RandomBrightnessContrast(brightness_limit=augmentation_config['brightness_range']),
             A.Resize(resize_dims[0], resize_dims[1]),
             #A.Normalize(),
+            A.Normalize(mean=(0, 0, 0), std=(1, 1, 1), max_pixel_value=255.0),
             ToTensorV2()
         ])
 
