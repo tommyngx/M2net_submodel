@@ -62,9 +62,9 @@ def plot_predictions(images, labels, predictions, class_names, save_path, filena
     """
     Plot grid of images with filename, ground truth and predicted labels
     Args:
-        images: tensor of images
+        images: tensor of images (normalized)
         labels: ground truth labels
-        predictions: predicted labels
+        predictions: predicted labels 
         class_names: list of class names
         save_path: path to save plot
         filenames: list of image filenames
@@ -74,9 +74,10 @@ def plot_predictions(images, labels, predictions, class_names, save_path, filena
     import torch
     import numpy as np
     
+    # Convert to numpy and move to CPU if needed
     images = images.cpu().numpy()
     
-    # Create grid plot with more space for text
+    # Create grid plot
     fig, axes = plt.subplots(3, 4, figsize=(16, 14))
     axes = axes.ravel()
     
@@ -84,9 +85,8 @@ def plot_predictions(images, labels, predictions, class_names, save_path, filena
         # Get single image and convert from CHW to HWC format
         img = np.transpose(images[idx], (1, 2, 0))
         
-        # Denormalize image - for A.Normalize(mean=(0,0,0), std=(1,1,1))
-        img = img * 255.0
-        img = np.clip(img, 0, 255).astype(np.uint8)
+        # Denormalize image if it was normalized with mean=(0,0,0), std=(1,1,1)
+        img = (img * 255).astype(np.uint8)  # Simple denormalization
         
         # Plot image
         axes[idx].imshow(img)
