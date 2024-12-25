@@ -75,9 +75,9 @@ def plot_predictions(images, labels, predictions, class_names, save_path, num_sa
         # Get single image and convert from CHW to HWC format
         img = np.transpose(images[idx], (1, 2, 0))
         
-        # Denormalize image
-        img = img * np.array([0.229, 0.224, 0.225]) + np.array([0.485, 0.456, 0.406])
-        img = np.clip(img, 0, 1)
+        # Denormalize image - for A.Normalize(mean=(0,0,0), std=(1,1,1))
+        img = img * 255.0  # Scale back to [0,255] range
+        img = np.clip(img, 0, 255).astype(np.uint8)
         
         # Plot image
         axes[idx].imshow(img)
