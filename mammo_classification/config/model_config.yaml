@@ -14,6 +14,7 @@ model:
     model_name: 'resnet50'
     input_size: [224, 224]
     num_classes: 3
+    pretrained: true
     learning_rate: 0.001
     batch_size: 32
     epochs: 500
