@@ -13,7 +13,6 @@ from data.dataset import MammographyDataset, print_class_distribution
 from utils.visualization import plot_confusion_matrix, plot_predictions
 from utils.metrics import calculate_metrics, calculate_class_weights
 from models.birads_classifier import BiradsClassifier
-from utils.metrics import calculate_metrics
 import seaborn as sns
 import matplotlib.pyplot as plt
 import csv
@@ -39,7 +38,7 @@ def train_birads(config_path='config/model_config.yaml', model_name='resnet50', 
     print("1. Loading configuration...")
     with open(config_path) as f:
         config = yaml.safe_load(f)
-    
+
     # Create output directories from config
     sydney_tz = pytz.timezone('Australia/Sydney')
     timestamp = datetime.now(sydney_tz).strftime('%Y%m%d_%H%M%S')

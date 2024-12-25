@@ -3,6 +3,7 @@ import torch
 import numpy as np
 from sklearn.utils.class_weight import compute_class_weight
 
+
 def calculate_metrics(y_true, y_pred):
     """
     Calculate various classification metrics
@@ -18,7 +19,7 @@ def calculate_metrics(y_true, y_pred):
         'accuracy': accuracy_score(y_true, y_pred),
         'precision': precision_score(y_true, y_pred, average='weighted'),
         'recall': recall_score(y_true, y_pred, average='weighted'),
-        'f1': f1_score(y_true, y_pred, average='weighted'),
+        'f1': f1_score(y_true, y_pred, average='weighted',zero_division=0),
         'kappa': cohen_kappa_score(y_true, y_pred)
     }
     return metrics
