@@ -26,9 +26,9 @@ data:
     resize: [224, 224]
     horizontal_flip: false
     vertical_flip: false
-    rotation_range: 10
-    zoom_range: 0.05
-    brightness_range: [0.8, 1.2]
+    rotation_range: 1
+    zoom_range: 0.00
+    brightness_range: [0.9, 1.1]
 
 training:
   validation_split: 0.2
