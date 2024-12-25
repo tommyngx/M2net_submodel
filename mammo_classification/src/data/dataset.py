@@ -73,7 +73,7 @@ def print_class_distribution(dataset, task):
     return class_names
 
 
-def upgrade_df_with_image_size_and_save(df, metadata_path, path_column='path2', size_threshold=8):
+def upgrade_df_with_image_size_and_save(df, metadata_path, path_column='path2', size_threshold=3):
     """Add image size columns and remove small files from dataframe"""
     # Read existing dataframe
     #df = pd.read_csv(metadata_path)
