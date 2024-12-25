@@ -12,7 +12,6 @@ from sklearn.metrics import accuracy_score, cohen_kappa_score, classification_re
 from data.dataset import MammographyDataset, print_class_distribution
 from utils.visualization import plot_confusion_matrix, plot_predictions
 from utils.metrics import calculate_metrics, calculate_class_weights
-from models.birads_classifier import BiradsClassifier
 from models.general_classifier import GeneralClassifier
 import seaborn as sns
 import matplotlib.pyplot as plt
