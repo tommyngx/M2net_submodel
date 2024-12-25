@@ -51,7 +51,7 @@ class MammographyDataset(Dataset):
 
     def __getitem__(self, idx):
         row = self.df.iloc[idx]
-        image = Image.open(row['path']).convert('RGB')
+        image = Image.open(row['path2']).convert('RGB')
         image = np.array(image)
         
         if self.transform:
