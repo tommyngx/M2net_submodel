@@ -28,7 +28,7 @@ data:
     vertical_flip: false
     rotation_range: 1
     zoom_range: 0.00
-    brightness_range: [0.9, 1.1]
+    brightness_range: [1.0, 1.0]
 
 training:
   validation_split: 0.2
