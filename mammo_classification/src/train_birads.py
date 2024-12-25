@@ -84,7 +84,7 @@ def train_birads(config_path='config/model_config.yaml', model_name='resnet50', 
                             batch_size=config['model']['birads_classifier']['batch_size'],
                             shuffle=True)
     test_loader = DataLoader(test_dataset, 
-                           batch_size=config['model']['birads_classifier']['batch_size'])
+                           batch_size=config['model']['birads_classifier']['batch_size'], shuffle=False)
     
     # Initialize model with config parameters
     print("\n3. Initializing model...")
