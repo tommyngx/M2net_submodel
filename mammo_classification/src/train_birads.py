@@ -129,7 +129,8 @@ def train_birads(config_path='config/model_config.yaml', model_name='resnet50', 
         running_loss = 0.0
         
         progress_bar = tqdm(train_loader, desc=f'Epoch {epoch+1}/{config["model"]["birads_classifier"]["epochs"]}')
-        for i, (images, labels) in enumerate(progress_bar):
+        for i, batch in enumerate(progress_bar):
+            images, labels, _ = batch  # Unpack 3 values, ignore filenames during training
             images, labels = images.to(device), labels.to(device)
             
             optimizer.zero_grad()
@@ -150,7 +151,8 @@ def train_birads(config_path='config/model_config.yaml', model_name='resnet50', 
             all_labels = []
             
             with torch.no_grad():
-                for images, labels in test_loader:
+                for batch in test_loader:
+                    images, labels, _ = batch  # Unpack 3 values, ignore filenames during testing
                     images = images.to(device)
                     outputs = model(images)
                     _, predicted = torch.max(outputs.data, 1)
