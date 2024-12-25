@@ -58,17 +58,26 @@ def plot_confusion_matrix(y_true, y_pred, classes, save_path):
     plt.close()
 
 
-def plot_predictions(images, labels, predictions, class_names, save_path, num_samples=12):
-    """Plot grid of images with ground truth and predicted labels"""
+def plot_predictions(images, labels, predictions, class_names, save_path, filenames=None, num_samples=12):
+    """
+    Plot grid of images with filename, ground truth and predicted labels
+    Args:
+        images: tensor of images
+        labels: ground truth labels
+        predictions: predicted labels
+        class_names: list of class names
+        save_path: path to save plot
+        filenames: list of image filenames
+        num_samples: number of images to plot
+    """
     import matplotlib.pyplot as plt
     import torch
     import numpy as np
     
-    # Convert tensors to numpy arrays
     images = images.cpu().numpy()
     
-    # Create grid plot
-    fig, axes = plt.subplots(3, 4, figsize=(15, 12))
+    # Create grid plot with more space for text
+    fig, axes = plt.subplots(3, 4, figsize=(16, 14))
     axes = axes.ravel()
     
     for idx in range(num_samples):
@@ -76,21 +85,26 @@ def plot_predictions(images, labels, predictions, class_names, save_path, num_sa
         img = np.transpose(images[idx], (1, 2, 0))
         
         # Denormalize image - for A.Normalize(mean=(0,0,0), std=(1,1,1))
-        img = img * 255.0  # Scale back to [0,255] range
+        img = img * 255.0
         img = np.clip(img, 0, 255).astype(np.uint8)
         
         # Plot image
         axes[idx].imshow(img)
         axes[idx].axis('off')
         
-        # Add ground truth and prediction labels
+        # Add labels
         true_label = class_names[labels[idx]]
         pred_label = class_names[predictions[idx]]
         color = 'green' if true_label == pred_label else 'red'
         
-        axes[idx].set_title(f'True: {true_label}\nPred: {pred_label}', 
-                           color=color, fontsize=10)
+        # Create title with filename if provided
+        title = f'True: {true_label}\nPred: {pred_label}'
+        if filenames is not None:
+            filename = os.path.basename(filenames[idx])
+            title = f'{filename}\n{title}'
+        
+        axes[idx].set_title(title, color=color, fontsize=9)
     
     plt.tight_layout()
-    plt.savefig(save_path)
+    plt.savefig(save_path, bbox_inches='tight', dpi=150)
     plt.close()

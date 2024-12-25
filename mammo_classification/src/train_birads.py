@@ -179,18 +179,19 @@ def train_birads(config_path='config/model_config.yaml', model_name='resnet50', 
                 # Get random test samples
                 with torch.no_grad():
                     test_iter = iter(test_loader)
-                    images, labels = next(test_iter)
+                    images, labels, filenames = next(test_iter)
                     images = images.to(device)
                     outputs = model(images)
                     _, predictions = torch.max(outputs.data, 1)
                     
-                    # Save prediction examples
+                    # Save prediction examples with filenames
                     examples_path = os.path.join(log_dir, f'predictions_epoch{epoch+1}.png')
                     plot_predictions(images[:12], 
                                     labels[:12].cpu().numpy(),
                                     predictions[:12].cpu().numpy(),
                                     class_names,
-                                    examples_path)
+                                    examples_path,
+                                    filenames=filenames[:12])
                 
                 # Save confusion matrix
                 cm_save_path = os.path.join(log_dir, f'confusion_matrix_epoch{epoch+1}.png')
