@@ -31,20 +31,27 @@ class MammographyDataset(Dataset):
         self.num_classes = len(self.labels)
         self.label_to_idx = {label: idx for idx, label in enumerate(self.labels)}
         
-        # Load augmentations from config
-        augmentation_config = config['data']['augmentation']
-        resize_dims = augmentation_config['resize']
-        self.transform = A.Compose([
-            A.HorizontalFlip(p=augmentation_config['horizontal_flip']),
-            A.VerticalFlip(p=augmentation_config['vertical_flip']),
-            A.Rotate(limit=augmentation_config['rotation_range']),
-            A.RandomScale(scale_limit=augmentation_config['zoom_range']),
-            A.RandomBrightnessContrast(brightness_limit=augmentation_config['brightness_range']),
-            A.Resize(resize_dims[0], resize_dims[1]),
-            #A.Normalize(),
-            A.Normalize(mean=(0, 0, 0), std=(1, 1, 1), max_pixel_value=255.0),
-            ToTensorV2()
-        ])
+        # Load augmentations from config if split is 'train'
+        if split == 'train':
+            augmentation_config = config['data']['augmentation']
+            resize_dims = augmentation_config['resize']
+            self.transform = A.Compose([
+                A.HorizontalFlip(p=augmentation_config['horizontal_flip']),
+                A.VerticalFlip(p=augmentation_config['vertical_flip']),
+                A.Rotate(limit=augmentation_config['rotation_range']),
+                A.RandomScale(scale_limit=augmentation_config['zoom_range']),
+                A.RandomBrightnessContrast(brightness_limit=augmentation_config['brightness_range']),
+                A.Resize(resize_dims[0], resize_dims[1]),
+                A.Normalize(mean=(0, 0, 0), std=(1, 1, 1), max_pixel_value=255.0),
+                ToTensorV2()
+            ])
+        else:
+            resize_dims = config['data']['augmentation']['resize']
+            self.transform = A.Compose([
+                A.Resize(resize_dims[0], resize_dims[1]),
+                A.Normalize(mean=(0, 0, 0), std=(1, 1, 1), max_pixel_value=255.0),
+                ToTensorV2()
+            ])
 
     def __len__(self):
         return len(self.df)
@@ -76,8 +83,6 @@ def print_class_distribution(dataset, task):
 
 def upgrade_df_with_image_size_and_save(df, metadata_path, path_column='path2', size_threshold=3):
     """Add image size columns and remove small files from dataframe"""
-    # Read existing dataframe
-    #df = pd.read_csv(metadata_path)
     initial_count = len(df)
     
     # Add size columns
