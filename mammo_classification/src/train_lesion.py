@@ -1,18 +1,20 @@
 # src/train_lesion.py
 import argparse
 import yaml
-import torch
 import os
+from pathlib import Path
+import torch
+from tqdm import tqdm
 import pandas as pd
+import numpy as np
 from torch.utils.data import DataLoader
-from sklearn.metrics import accuracy_score, cohen_kappa_score, classification_report
+from sklearn.metrics import accuracy_score, cohen_kappa_score, classification_report, confusion_matrix, f1_score
 from data.dataset import MammographyDataset, print_class_distribution
-from utils.visualization import plot_confusion_matrix
+from utils.visualization import plot_confusion_matrix, plot_predictions
 from utils.metrics import calculate_metrics, calculate_class_weights
-from models.lesion_classifier import LesionClassifier
+from models.general_classifier import GeneralClassifier
 import seaborn as sns
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix, f1_score
 import csv
 from datetime import datetime
 import pytz
@@ -36,7 +38,7 @@ def train_lesion(config_path='config/model_config.yaml', model_name='resnet50', 
     print("1. Loading configuration...")
     with open(config_path) as f:
         config = yaml.safe_load(f)
-    
+
     # Create output directories from config
     sydney_tz = pytz.timezone('Australia/Sydney')
     timestamp = datetime.now(sydney_tz).strftime('%Y%m%d_%H%M%S')
@@ -82,14 +84,14 @@ def train_lesion(config_path='config/model_config.yaml', model_name='resnet50', 
                             batch_size=config['model']['lesion_classifier']['batch_size'],
                             shuffle=True)
     test_loader = DataLoader(test_dataset, 
-                           batch_size=config['model']['lesion_classifier']['batch_size'])
+                           batch_size=config['model']['lesion_classifier']['batch_size'], shuffle=False)
     
     # Initialize model with config parameters
     print("\n3. Initializing model...")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
     
-    model = LesionClassifier(
+    model = GeneralClassifier(
         model_name=model_name,
         num_classes=train_dataset.num_classes,
         pretrained=config['model']['lesion_classifier']['pretrained']
@@ -101,6 +103,8 @@ def train_lesion(config_path='config/model_config.yaml', model_name='resnet50', 
     
     # Update loss function with class weights
     criterion = torch.nn.CrossEntropyLoss(weight=class_weights)
+    
+    # Training setup
     optimizer = torch.optim.Adam(model.parameters(), 
                                lr=config['model']['lesion_classifier']['learning_rate'])
     
@@ -117,9 +121,117 @@ def train_lesion(config_path='config/model_config.yaml', model_name='resnet50', 
             print(f"Resumed from epoch {start_epoch} with accuracy: {best_accuracy:.4f}")
         else:
             print(f"No checkpoint found at: {resume_path}")
+    
+    print("\n4. Starting training...")
+    # Training loop
+    for epoch in range(start_epoch, config['model']['lesion_classifier']['epochs']):
+        model.train()
+        running_loss = 0.0
+        
+        progress_bar = tqdm(train_loader, desc=f'Epoch {epoch+1}/{config["model"]["lesion_classifier"]["epochs"]}')
+        for i, batch in enumerate(progress_bar):
+            images, labels, _ = batch  # Unpack 3 values, ignore filenames during training
+            images, labels = images.to(device), labels.to(device)
+            
+            optimizer.zero_grad()
+            outputs = model(images)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+            
+            running_loss += loss.item()
+            
+            # Update progress bar
+            progress_bar.set_postfix({'loss': f'{running_loss/(i+1):.4f}'})
+            
+        # Evaluation
+        if (epoch + 1) % 2 == 0:
+            model.eval()
+            all_preds = []
+            all_labels = []
+            
+            with torch.no_grad():
+                for batch in test_loader:
+                    images, labels, _ = batch  # Unpack 3 values, ignore filenames during testing
+                    images = images.to(device)
+                    outputs = model(images)
+                    _, predicted = torch.max(outputs.data, 1)
+                    all_preds.extend(predicted.cpu().numpy())
+                    all_labels.extend(labels.numpy())
+            
+            # Calculate metrics
+            metrics = calculate_metrics(all_labels, all_preds)
+            f1 = f1_score(all_labels, all_preds, average='weighted', zero_division=0)
+            
+            # Log metrics
+            with open(log_file, 'a', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow([epoch + 1, 
+                               running_loss/len(train_loader),
+                               metrics['accuracy'],
+                               f1,
+                               metrics['kappa']])
+            
+            # Save best model with new naming format
+            if metrics['accuracy'] > best_accuracy:
+                best_accuracy = metrics['accuracy']
+                model_save_name = f"{model_name}_acc{metrics['accuracy']:.3f}_epoch{epoch+1}.pth"
+                best_model_path = os.path.join(model_dir, model_save_name)
+                
+                # Get random test samples
+                with torch.no_grad():
+                    test_iter = iter(test_loader)
+                    images, labels, filenames = next(test_iter)
+                    images = images.to(device)
+                    outputs = model(images)
+                    _, predictions = torch.max(outputs.data, 1)
+                    
+                    # Debug prints
+                    #print(f"Images shape: {images.shape}")
+                    #print(f"Labels: {labels[:12]}")
+                    #print(f"Filenames: {filenames[:12]}")
+                    
+                    # Save prediction examples with filenames
+                    examples_path = os.path.join(log_dir, f'predictions_epoch{epoch+1}.png')
+                    plot_predictions(images[:12], 
+                                    labels[:12].cpu().numpy(),
+                                    predictions[:12].cpu().numpy(),
+                                    class_names,
+                                    examples_path,
+                                    filenames=filenames[:12])
+                
+                # Save confusion matrix
+                cm_save_path = os.path.join(log_dir, f'confusion_matrix_epoch{epoch+1}.png')
+                plot_confusion_matrix(all_labels, all_preds, 
+                                    classes=class_names,
+                                    save_path=cm_save_path)
+                
+                # Save model
+                torch.save({
+                    'epoch': epoch,
+                    'model_state_dict': model.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'accuracy': best_accuracy,
+                    'f1_score': f1,
+                    'model_name': model_name,
+                }, best_model_path)
+                
+                print(f'\nNew best model saved: {model_save_name}')
+        
+            print(f'Epoch [{epoch+1}/{config["model"]["lesion_classifier"]["epochs"]}]')
+            print(f'Accuracy: {metrics["accuracy"]:.4f}, Kappa Score: {metrics["kappa"]:.4f}')
+            print(f'F1-Score: {f1:.4f}')
+            print('\nClassification Report:')
+            print(classification_report(all_labels, all_preds, target_names=class_names, zero_division=0))
 
-    # Rest of the training loop code follows the same pattern as train_birads.py
-    ...
+    print(f"\nTraining completed. Best model saved at: {best_model_path}")
+    print(f"Training logs saved at: {log_file}")
+
+    # Verify log file
+    print("\nVerifying log file contents:")
+    with open(log_file, 'r') as f:
+        log_contents = f.read()
+        print(log_contents)
 
 if __name__ == '__main__':
     args = parse_args()

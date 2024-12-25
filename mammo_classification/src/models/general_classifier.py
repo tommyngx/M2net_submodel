@@ -4,9 +4,9 @@ import torchvision.models as models
 from torchvision.models import ResNet50_Weights, ConvNeXt_Tiny_Weights, ConvNeXt_Base_Weights
 import timm
 
-class BiradsClassifier(nn.Module):
+class GeneralClassifier(nn.Module):
     def __init__(self, model_name='resnet50', num_classes=4, pretrained=True):
-        super(BiradsClassifier, self).__init__()
+        super(GeneralClassifier, self).__init__()
         self.model_name = model_name
         
         if 'resnet' in model_name:
@@ -54,35 +54,3 @@ class BiradsClassifier(nn.Module):
 
     def forward(self, x):
         return self.model(x)
-
-    def train(self, mode=True):
-        """
-        Override train method to match PyTorch's expected behavior
-        """
-        return super().train(mode)
-
-    def predict(self, x):
-        self.eval()
-        with torch.no_grad():
-            output = self(x)
-            _, predicted = torch.max(output.data, 1)
-        return predicted
-
-    def evaluate(self, test_loader, criterion, device):
-        self.eval()
-        total_loss = 0
-        predictions = []
-        targets = []
-        
-        with torch.no_grad():
-            for inputs, labels in test_loader:
-                inputs, labels = inputs.to(device), labels.to(device)
-                outputs = self(inputs)
-                loss = criterion(outputs, labels)
-                total_loss += loss.item()
-                
-                _, predicted = torch.max(outputs.data, 1)
-                predictions.extend(predicted.cpu().numpy())
-                targets.extend(labels.cpu().numpy())
-                
-        return total_loss / len(test_loader), predictions, targets

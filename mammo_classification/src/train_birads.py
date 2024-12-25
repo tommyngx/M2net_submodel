@@ -13,6 +13,7 @@ from data.dataset import MammographyDataset, print_class_distribution
 from utils.visualization import plot_confusion_matrix, plot_predictions
 from utils.metrics import calculate_metrics, calculate_class_weights
 from models.birads_classifier import BiradsClassifier
+from models.general_classifier import GeneralClassifier
 import seaborn as sns
 import matplotlib.pyplot as plt
 import csv
@@ -91,7 +92,7 @@ def train_birads(config_path='config/model_config.yaml', model_name='resnet50', 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
     
-    model = BiradsClassifier(
+    model = GeneralClassifier(
         model_name=model_name,
         num_classes=train_dataset.num_classes,
         pretrained=config['model']['birads_classifier']['pretrained']
