@@ -58,7 +58,8 @@ class MammographyDataset(Dataset):
 
     def __getitem__(self, idx):
         row = self.df.iloc[idx]
-        image = Image.open(row['path2']).convert('RGB')
+        right_link = 'path' # 'path' or 'path2'
+        image = Image.open(row[right_link]).convert('RGB')
         image = np.array(image)
         
         if self.transform:
@@ -69,7 +70,7 @@ class MammographyDataset(Dataset):
         else:
             label = self.label_to_idx[row['lesion_types']]
             
-        return image, label, row['path2']
+        return image, label, row[right_link]
 
 def print_class_distribution(dataset, task):
     """Print the number of images for each class and return class names"""
