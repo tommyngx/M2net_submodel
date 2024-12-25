@@ -62,7 +62,7 @@ class MammographyDataset(Dataset):
         else:
             label = self.label_to_idx[row['lesion_types']]
             
-        return image, label, row['path']
+        return image, label, row['path2']
 
 def print_class_distribution(dataset, task):
     """Print the number of images for each class and return class names"""
