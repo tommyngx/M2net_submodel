@@ -187,9 +187,9 @@ def train_birads(config_path='config/model_config.yaml', model_name='resnet50', 
                     _, predictions = torch.max(outputs.data, 1)
                     
                     # Debug prints
-                    print(f"Images shape: {images.shape}")
-                    print(f"Labels: {labels[:12]}")
-                    print(f"Filenames: {filenames[:12]}")
+                    #print(f"Images shape: {images.shape}")
+                    #print(f"Labels: {labels[:12]}")
+                    #print(f"Filenames: {filenames[:12]}")
                     
                     # Save prediction examples with filenames
                     examples_path = os.path.join(log_dir, f'predictions_epoch{epoch+1}.png')

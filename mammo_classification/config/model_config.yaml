@@ -24,9 +24,9 @@ data:
   image_dir:  '/projects/OsteoLab/Tommy/BreastCancer/SAIGONMEC/Submodels/' # "/content"
   augmentation:
     resize: [224, 224]
-    horizontal_flip: false
+    horizontal_flip: true
     vertical_flip: false
-    rotation_range: 1
+    rotation_range: 10
     zoom_range: 0.00
     brightness_range: [1.0, 1.0]
 

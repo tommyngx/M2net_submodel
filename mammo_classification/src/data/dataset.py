@@ -39,8 +39,8 @@ class MammographyDataset(Dataset):
                 A.HorizontalFlip(p=augmentation_config['horizontal_flip']),
                 A.VerticalFlip(p=augmentation_config['vertical_flip']),
                 A.Rotate(limit=augmentation_config['rotation_range']),
-                A.RandomScale(scale_limit=augmentation_config['zoom_range']),
-                A.RandomBrightnessContrast(brightness_limit=augmentation_config['brightness_range']),
+                #A.RandomScale(scale_limit=augmentation_config['zoom_range']),
+                #A.RandomBrightnessContrast(brightness_limit=augmentation_config['brightness_range']),
                 A.Resize(resize_dims[0], resize_dims[1]),
                 A.Normalize(mean=(0, 0, 0), std=(1, 1, 1), max_pixel_value=255.0),
                 ToTensorV2()
